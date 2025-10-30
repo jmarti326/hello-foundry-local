@@ -1,0 +1,143 @@
+@page
+@model HelloFoundry.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "AI Chat Interface";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="text-center mb-4">AI Chat Interface</h1>
+            
+            <div class="chat-container">
+                <div id="chatMessages" class="chat-messages mb-3" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; background-color: #f8f9fa;">
+                    <div class="text-muted text-center">Start a conversation with the AI...</div>
+                </div>
+                
+                <form id="chatForm" class="d-flex">
+                    <input type="text" id="messageInput" class="form-control me-2" placeholder="Type your message here..." autocomplete="off" required>
+                    <button type="submit" id="sendButton" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-message {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: 20%;
+        text-align: right;
+    }
+    
+    .ai-message {
+        background-color: #e9ecef;
+        color: #333;
+        margin-right: 20%;
+    }
+    
+    .typing-indicator {
+        background-color: #e9ecef;
+        color: #666;
+        margin-right: 20%;
+        font-style: italic;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const chatMessages = document.getElementById('chatMessages');
+    
+    // Clear initial message on first interaction
+    let isFirstMessage = true;
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+        
+        // Clear initial message
+        if (isFirstMessage) {
+            chatMessages.innerHTML = '';
+            isFirstMessage = false;
+        }
+        
+        // Add user message
+        addMessage(message, 'user');
+        
+        // Clear input and disable form
+        messageInput.value = '';
+        sendButton.disabled = true;
+        messageInput.disabled = true;
+        
+        // Add typing indicator
+        const typingDiv = addMessage('AI is typing...', 'ai typing');
+        
+        try {
+            // Send message to server
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            
+            const data = await response.json();
+            
+            // Remove typing indicator
+            typingDiv.remove();
+            
+            // Add AI response
+            addMessage(data.response, 'ai');
+            
+        } catch (error) {
+            console.error('Error:', error);
+            typingDiv.remove();
+            addMessage('Sorry, there was an error processing your request.', 'ai error');
+        } finally {
+            // Re-enable form
+            sendButton.disabled = false;
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+    });
+    
+    function addMessage(text, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${type.includes('user') ? 'user-message' : 'ai-message'}`;
+        
+        if (type.includes('typing')) {
+            messageDiv.className += ' typing-indicator';
+        }
+        
+        if (type.includes('error')) {
+            messageDiv.style.color = '#dc3545';
+        }
+        
+        messageDiv.textContent = text;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        return messageDiv;
+    }
+    
+    // Focus on input on page load
+    messageInput.focus();
+});
+</script>
