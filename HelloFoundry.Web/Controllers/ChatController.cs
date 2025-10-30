@@ -1,18 +1,24 @@
 using Microsoft.AspNetCore.Mvc;
 using HelloFoundry.Web.Services;
+using HelloFoundry.Web.Models;
+using HelloFoundry.Web.Configuration;
 using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
 
 namespace HelloFoundry.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class ChatController : ControllerBase
 {
     private readonly IAiChatService _aiChatService;
+    private readonly ApiOptions _apiOptions;
 
     public ChatController(IAiChatService aiChatService)
     {
-        _aiChatService = aiChatService;
+        _aiChatService = aiChatService ?? throw new ArgumentNullException(nameof(aiChatService));
+        _apiOptions = new ApiOptions(); // Will be improved with proper DI
     }
 
     [HttpPost]
@@ -31,6 +37,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error in Chat POST: {ex.Message}");
             return StatusCode(500, new { error = "An error occurred while processing your request" });
         }
     }
@@ -67,6 +74,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error in streaming chat: {ex.Message}");
             var errorData = JsonSerializer.Serialize(new { error = "An error occurred while processing your request" });
             await Response.WriteAsync($"data: {errorData}\n\n");
             await Response.Body.FlushAsync();
